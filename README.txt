@@ -26,9 +26,15 @@ I recommend the installation though mojo-legacy works without the modules.
 *::FieldHash looks to me like a cure of memory leaks so
 if you're aiming at non-persistent environment like CGI, it may not a must.
 
+Since upstream mojo v5.59 It depends on IO::Socket::IP for web support, it no 
+longer uses IO::Socket::INET
+
+$ cpanm IO::Socket::IP
+
 To use Mojolicious::Plugin::PODRenderer, you need Pod::Simple 3.09 or higher
 which first shipped with perl-5.11.2. If you use older perls, just do
-the following command.
+the following command.ä+ää ojojo
+i0d
 
 $ cpanm Pod::Simple
 
@@ -43,3 +49,4 @@ $ cpanm Digest::SHA
 
 If Compress::Raw::Zlib is not found, some tests may fail. However I guess
 this works without the module in real world use case.
+ knußmgk+

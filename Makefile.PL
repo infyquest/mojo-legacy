@@ -7,6 +7,7 @@ use ExtUtils::MakeMaker;
 
 # Pod::Simple 3.09 first shipped with Perl 5.11.2
 # Time::Local 1.2 first shipped with Perl 5.13.9
+# IO::Socket::IP 0.26 first shipped with Perl 5.19.8
 WriteMakefile(
   NAME         => 'Mojolicious',
   VERSION_FROM => 'lib/Mojolicious.pm',
@@ -30,6 +31,7 @@ WriteMakefile(
     'Digest::SHA'             => '0',
     'Socket'                  => '1.81',
     'IO::Socket'              => '1.31',
+    'IO::Socket::IP'          => '0.26',
     'Test::More'              => '0.98',
     !(eval 'use Hash::Util::FieldHash; 1')
                                       ? ('Hash::FieldHash' => '0') : (),
