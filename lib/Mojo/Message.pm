@@ -147,7 +147,8 @@ sub parse {
   my $self = shift;
 
   return $self if $self->{error};
-  $self->{raw_size} += length(my $chunk = defined $chunk ? $chunk : '');
+  my $chunk = shift;
+  $self->{raw_size} += length($chunk = defined $chunk ? $chunk : '');
   $self->{buffer} .= $chunk;
 
   # Start line
