@@ -332,7 +332,7 @@ sub _message {
   }
 
   # Decode text frame if there is no type check
-  else { $msg = decode 'UTF-8', $msg if ($type // '') eq 'text' }
+  else { $msg = decode 'UTF-8', $msg if (defined $type ? $type : '') eq 'text' }
 
   return $self->_test($name, defined $msg ? $msg : '', $value, $desc);
 }

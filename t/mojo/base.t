@@ -13,7 +13,7 @@ use base 'Mojo::BaseTest::Base2';
 __PACKAGE__->attr(heads => 1);
 __PACKAGE__->attr('name');
 
-sub more_heads { shift->{heads} += shift // 1 }
+sub more_heads { my $tmp = shift; $tmp = defined $tmp ? $tmp : 1; shift->{heads} += $tmp; }
 
 package Mojo::BaseTestTest;
 use Mojo::Base 'Mojo::BaseTest';
