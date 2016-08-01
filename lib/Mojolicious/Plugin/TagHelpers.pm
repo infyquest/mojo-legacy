@@ -236,7 +236,7 @@ sub _text_area {
 
   my $cb = ref $_[-1] eq 'CODE' ? pop : undef;
   my $content = @_ % 2 ? shift : undef;
-  $content = defined $c->param($name) ? $c->param($name) : defined $content ? $content : defined $cb ? $cb : '');
+  $content = defined $c->param($name) ? $c->param($name) : defined $content ? $content : defined $cb ? $cb : '';
 
   return _validation($c, $name, 'textarea', @_, name => $name, $cb);
 }
