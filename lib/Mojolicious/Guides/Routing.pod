@@ -72,7 +72,7 @@ will learn more about this later on. Internally routes get compiled to regular
 expressions, so you can get the best of both worlds with a little bit of
 experience.
 
-  /user/show/:id -> qr/(?-xism:^\/user\/show/([^\/\.]+))/
+  /user/show/:id -> qr/(?-xism:^\/user\/show/([^\/.]+))/
 
 A trailing slash in the path is always optional.
 
@@ -236,7 +236,7 @@ but content will not be sent with the response even if it is present.
 IRIs are handled transparently, that means paths are guaranteed to be
 unescaped and decoded from bytes to characters.
 
-  # GET /☃ (unicode snowman) -> {controller => 'foo', action => 'snowman'}
+  # GET /☃ (Unicode snowman) -> {controller => 'foo', action => 'snowman'}
   $r->get('/☃')->to(controller => 'foo', action => 'snowman');
 
 =head2 Stash
@@ -281,13 +281,13 @@ endpoints of these nested routes can.
 The stash is simply inherited from route to route and newer values override
 old ones.
 
-  # /foo/bar -> {controller => 'foo', action => 'bar'}
-  # /foo/baz -> {controller => 'foo', action => 'baz'}
-  # /foo/cde -> {controller => 'foo', action => 'abc'}
-  my $foo = $r->any('/foo')->to(controller => 'foo', action => 'abc');
-  $foo->get('/bar')->to(action => 'bar');
-  $foo->get('/baz')->to(action => 'baz');
-  $foo->get('/cde');
+  # /cats      -> {controller => 'cats', action => 'index'}
+  # /cats/nyan -> {controller => 'cats', action => 'nyan'}
+  # /cats/lol  -> {controller => 'cats', action => 'default'}
+  my $cats = $r->any('/cats')->to(controller => 'cats', action => 'default');
+  $cats->get('/')->to(action => 'index');
+  $cats->get('/nyan')->to(action => 'nyan');
+  $cats->get('/lol');
 
 =head2 Special stash values
 
@@ -519,9 +519,9 @@ The actual action code for this destination needs to return a true value or
 the dispatch chain will be broken, this can be a very powerful tool for
 authentication.
 
-  # /foo/bar -> {cb => sub {...}}
-  #             {controller => 'foo', action => 'bar'}
-  my $foo = $r->under('/foo' => sub {
+  # /blackjack -> {cb => sub {...}}
+  #               {controller => 'hideout', action => 'blackjack'}
+  my $auth = $r->under('/' => sub {
     my $c = shift;
 
     # Authenticated
@@ -531,13 +531,13 @@ authentication.
     $c->render(text => "You're not Bender.");
     return undef;
   });
-  $foo->get('/bar')->to('foo#bar');
+  $auth->get('/blackjack')->to('hideout#blackjack');
 
 Broken dispatch chains can be continued by calling the method
 L<Mojolicious::Controller/"continue">, this allows for example non-blocking
 operations to finish before reaching the next dispatch cycle.
 
-  my $foo = $r->under('/foo' => sub {
+  my $maybe = $r->under('/maybe' => sub {
     my $c = shift;
 
     # Wait 3 seconds and then give visitors a 50% chance to continue
@@ -552,7 +552,7 @@ operations to finish before reaching the next dispatch cycle.
 
     return undef;
   });
-  $foo->get('/bar')->to('foo#bar');
+  $maybe->get('/')->to('maybe#winner');
 
 Every destination is just a snapshot of the stash at the time the route
 matched, and only the C<format> value is shared by all of them. For a little
@@ -669,12 +669,18 @@ especially for plugins.
 
   1;
 
-Post-processing the response to set additional headers is a very common use.
+Post-processing the response to add or remove headers is a very common use.
 
   # Make sure static files are cached
   $app->hook(after_static => sub {
     my $c = shift;
     $c->res->headers->cache_control('max-age=3600, must-revalidate');
+  });
+
+  # Remove a default header
+  $app->hook(after_dispatch => sub {
+    my $c = shift;
+    $c->res->headers->remove('Server');
   });
 
 Same for pre-processing the request.

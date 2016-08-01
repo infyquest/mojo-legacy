@@ -9,7 +9,7 @@ use Mojo::JSON 'j';
 use Mojo::JSON::Pointer;
 use Mojo::Parameters;
 use Mojo::Upload;
-use Mojo::Util qw(decode split_header);
+use Mojo::Util 'decode';
 
 has content => sub { Mojo::Content::Single->new };
 has default_charset  => 'UTF-8';
@@ -99,7 +99,8 @@ sub fix_headers {
   # Content-Length or Connection (unless chunked transfer encoding is used)
   my $content = $self->content;
   my $headers = $content->headers;
-  return $self if $content->is_chunked || $headers->content_length;
+  if ($content->is_multipart) { $headers->remove('Content-Length') }
+  elsif ($content->is_chunked || $headers->content_length) { return $self }
   if   ($content->is_dynamic) { $headers->connection('close') }
   else                        { $headers->content_length($self->body_size) }
 
@@ -143,13 +144,10 @@ sub json {
 }
 
 sub parse {
-  my ($self, $chunk) = @_;
+  my $self = shift;
 
-  # Check message size
-  my $max = $self->max_message_size;
-  return $self->_limit('Maximum message size exceeded', 413)
-    if $max && ($self->{raw_size} += length($chunk = defined $chunk ? $chunk : '')) > $max;
-
+  return $self if $self->{error};
+  $self->{raw_size} += length($chunk = defined $chunk ? $chunk : '');
   $self->{buffer} .= $chunk;
 
   # Start line
@@ -169,13 +167,17 @@ sub parse {
   $self->content($self->content->parse(delete $self->{buffer}))
     if $state eq 'content' || $state eq 'finished';
 
+  # Check message size
+  my $max = $self->max_message_size;
+  return $self->_limit('Maximum message size exceeded', 413)
+    if $max && $max < $self->{raw_size};
+
   # Check line size
   return $self->_limit('Maximum line size exceeded', 431)
     if $self->headers->is_limit_exceeded;
 
   # Check buffer size
-  return $self->error(
-    {message => 'Maximum buffer size exceeded', advice => 400})
+  return $self->_limit('Maximum buffer size exceeded', 400)
     if $self->content->is_limit_exceeded;
 
   return $self->emit('progress')->content->is_finished ? $self->finish : $self;
@@ -428,8 +430,8 @@ entire message body has been received. Parts of the message body need to be
 loaded into memory to parse C<POST> parameters, so you have to make sure it is
 not excessively large, there's a 10MB limit by default.
 
-  # Get POST parameter value
-  say $msg->body_params->param('foo');
+  # Get POST parameter names and values
+  my $hash = $msg->body_params->to_hash;
 
 =head2 body_size
 
@@ -501,6 +503,15 @@ make sure it is not excessively large, there's a 10MB limit by default.
 
 Get or set message error, an C<undef> return value indicates that there is no
 error.
+
+  # Connection error
+  $msg->error({message => 'Connection refused'});
+
+  # Parser error
+  $msg->error({message => 'Maximum message size exceeded', advice => 413});
+
+  # 4xx/5xx response
+  $msg->error({message => 'Internal Server Error', code => 500});
 
 =head2 every_cookie
 
@@ -581,7 +592,8 @@ Check if message parser/generator is finished.
 
   my $bool = $msg->is_limit_exceeded;
 
-Check if message has exceeded L</"max_line_size"> or L</"max_message_size">.
+Check if message has exceeded L</"max_line_size">, L</"max_message_size">,
+L<Mojo::Content/"max_buffer_size"> or L<Mojo::Headers/"max_line_size">.
 
 =head2 json
 

@@ -99,13 +99,14 @@ sub _select {
     ($results = $results->slice($command)) and next if $command =~ /^\d+$/;
 
     # Text
-    return _say($results->text->each) if $command eq 'text';
+    return _say($results->map('text')->each) if $command eq 'text';
 
     # All text
-    return _say($results->all_text->each) if $command eq 'all';
+    return _say($results->map('all_text')->each) if $command eq 'all';
 
     # Attribute
-    return _say($results->attr(defined $args[0] ? $args[0] : '')->each) if $command eq 'attr';
+    return _say($results->map(attr => defined $args[0] ? $args[0] : '')->each)
+      if $command eq 'attr';
 
     # Unknown
     die qq{Unknown command "$command".\n};
@@ -130,7 +131,7 @@ Mojolicious::Command::get - Get command
     mojo get mojolicio.us
     mojo get -v -r google.com
     mojo get -v -H 'Host: mojolicious.org' -H 'Accept: */*' mojolicio.us
-    mojo get -M POST -c 'trololo' mojolicio.us
+    mojo get -M POST -H 'Content-Type: text/trololo' -c 'trololo' mojolicio.us
     mojo get mojolicio.us 'head > title' text
     mojo get mojolicio.us .footer all
     mojo get mojolicio.us a attr href

@@ -233,6 +233,9 @@ and is also available as C<$_>.
 
 Backported from perl-5.10.1
 
+  # Inject side effects into a method chain
+  $object->foo('A')->tap(sub { say $_->foo })->foo('B');
+
 =head1 DEBUGGING
 
 You can set the C<MOJO_BASE_DEBUG> environment variable to get some advanced

@@ -2,7 +2,7 @@ package Mojolicious::Plugin::TagHelpers;
 use Mojo::Base 'Mojolicious::Plugin';
 
 use Mojo::ByteStream;
-use Mojo::Util 'xml_escape';
+use Mojo::Util 'xss_escape';
 use Scalar::Util 'blessed';
 
 sub register {
@@ -140,7 +140,7 @@ sub _option {
   $attrs{selected} = 'selected' if exists $values->{$pair->[1]};
   %attrs = (%attrs, @$pair[2 .. $#$pair]);
 
-  return _tag('option', %attrs, sub { xml_escape $pair->[0] });
+  return _tag('option', %attrs, $pair->[0]);
 }
 
 sub _password_field {
@@ -212,13 +212,13 @@ sub _tag {
     }
     delete $attrs{data};
   }
-  $tag .= qq{ $_="} . xml_escape(defined $attrs{$_} ? $attrs{$_} : '') . '"' for sort keys %attrs;
+  $tag .= qq{ $_="} . xss_escape(defined $attrs{$_} ? $attrs{$_} : '') . '"' for sort keys %attrs;
 
   # Empty element
   unless ($cb || defined $content) { $tag .= ' />' }
 
   # End tag
-  else { $tag .= '>' . ($cb ? $cb->() : xml_escape($content)) . "</$name>" }
+  else { $tag .= '>' . ($cb ? $cb->() : xss_escape $content) . "</$name>" }
 
   # Prevent escaping
   return Mojo::ByteStream->new($tag);
@@ -234,11 +234,9 @@ sub _tag_with_error {
 sub _text_area {
   my ($c, $name) = (shift, shift);
 
-  # Make sure content is wrapped
-  my $cb = ref $_[-1] eq 'CODE' ? pop : sub {''};
+  my $cb = ref $_[-1] eq 'CODE' ? pop : undef;
   my $content = @_ % 2 ? shift : undef;
-  $cb = sub { xml_escape $content }
-    if defined($content = defined $c->param($name) ? $c->param($name) : $content);
+  $content = defined $c->param($name) ? $c->param($name) : defined $content ? $content : defined $cb ? $cb : '');
 
   return _validation($c, $name, 'textarea', @_, name => $name, $cb);
 }

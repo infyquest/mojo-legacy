@@ -47,7 +47,8 @@ sub run {
   $ENV{MOJO_MODE} ||= 'production';
 
   # Clean start (to make sure everything works)
-  die "Can't exec: $!" if !$ENV{HYPNOTOAD_REV}++ && !exec $ENV{HYPNOTOAD_EXE};
+  die "Can't exec: $!"
+    if !$ENV{HYPNOTOAD_REV}++ && !exec $^X, $ENV{HYPNOTOAD_EXE};
 
   # Preload application and configure server
   my $prefork = $self->prefork->cleanup(0);
@@ -109,7 +110,7 @@ sub _manage {
     unless ($self->{new}) {
       $log->info('Starting zero downtime software upgrade.');
       die "Can't fork: $!" unless defined(my $pid = $self->{new} = fork);
-      exec($ENV{HYPNOTOAD_EXE}) or die("Can't exec: $!") unless $pid;
+      exec $^X, $ENV{HYPNOTOAD_EXE} or die "Can't exec: $!" unless $pid;
     }
 
     # Timeout
@@ -175,10 +176,10 @@ file with it, and send a L</"USR2"> signal to the already running server.
 
 For better scalability (epoll, kqueue) and to provide non-blocking name
 resolution, SOCKS5 as well as TLS support, the optional modules L<EV> (4.0+),
-L<Net::DNS::Native> (0.11+), L<IO::Socket::Socks> (0.64+) and
-L<IO::Socket::SSL> (1.84+) will be used automatically if they are installed.
-Individual features can also be disabled with the C<MOJO_NO_NDN>,
-C<MOJO_NO_SOCKS> and C<MOJO_NO_TLS> environment variables.
+L<Net::DNS::Native> (0.15+), L<IO::Socket::Socks> (0.64+) and
+L<IO::Socket::SSL> (1.84+) will be used automatically if possible. Individual
+features can also be disabled with the C<MOJO_NO_NDN>, C<MOJO_NO_SOCKS> and
+C<MOJO_NO_TLS> environment variables.
 
 See L<Mojolicious::Guides::Cookbook/"DEPLOYMENT"> for more.
 
@@ -422,7 +423,7 @@ Configure server from application settings.
 
 =head2 run
 
-  $hypnotoad->run('script/myapp');
+  $hypnotoad->run('script/my_app');
 
 Run server for application.
 

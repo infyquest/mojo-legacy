@@ -28,12 +28,14 @@ sub detect {
 # Command line options for MOJO_HELP, MOJO_HOME and MOJO_MODE
 sub _args {
   return if __PACKAGE__->detect;
-  Getopt::Long::Configure(qw(no_auto_abbrev no_ignore_case pass_through));
+
+  my $save
+    = Getopt::Long::Configure(qw(no_auto_abbrev no_ignore_case pass_through));
   GetOptionsFromArray shift,
     'h|help'   => \$ENV{MOJO_HELP},
     'home=s'   => \$ENV{MOJO_HOME},
     'm|mode=s' => \$ENV{MOJO_MODE};
-  Getopt::Long::Configure('default');
+  Getopt::Long::Configure($save);
 }
 
 BEGIN { _args([@ARGV]) }
@@ -54,6 +56,8 @@ sub run {
     $name = shift @args if my $help = $name eq 'help';
     $help = $ENV{MOJO_HELP} = $ENV{MOJO_HELP} ? 1 : $help;
 
+    # Remove options shared by all commands before loading the command
+    _args(\@args);
     my $module;
     $module = _command("${_}::$name", 1) and last for @{$self->namespaces};
 
@@ -61,8 +65,7 @@ sub run {
     die qq{Unknown command "$name", maybe you need to install it?\n}
       unless $module;
 
-    # Run command (remove options shared by all commands)
-    _args(\@args);
+    # Run command
     my $command = $module->new(app => $self->app);
     return $help ? $command->help(@args) : $command->run(@args);
   }
@@ -256,7 +259,7 @@ directory.
   $ mojo version
   $ ./myapp.pl version
 
-Use L<Mojolicious::Command::version> to show version information for installed
+Use L<Mojolicious::Command::version> to show version information for available
 core and optional modules, very useful for debugging.
 
 =head1 ATTRIBUTES

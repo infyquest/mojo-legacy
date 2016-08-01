@@ -339,7 +339,7 @@ timeout if possible.
   %= include 'menubar'
   %= include 'menubar', format => 'txt'
 
-Alias for C<Mojolicious::Controller/"render_to_string">.
+Alias for L<Mojolicious::Controller/"render_to_string">.
 
 =head2 is_fresh
 
@@ -383,6 +383,12 @@ C<Range>, C<If-Modified-Since> and C<If-None-Match> headers.
   $asset->add_chunk('Hello World!')->mtime(784111777);
   $c->res->headers->content_type('text/plain');
   $c->reply->asset($asset);
+
+  # Serve static file if it exists
+  if (my $asset = $c->app->static->file('images/logo.png')) {
+    $c->res->headers->content_type('image/png');
+    $c->reply->asset($asset);
+  }
 
 =head2 reply->exception
 
@@ -437,7 +443,7 @@ Alias for L<Mojolicious::Controller/"stash">.
   % title 'Welcome!';
   % title 'Welcome!', foo => 'bar';
 
-Get of set C<title> stash value, all additional pairs get merged into the
+Get or set C<title> stash value, all additional pairs get merged into the
 L</"stash">.
 
 =head2 ua

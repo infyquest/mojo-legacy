@@ -4,8 +4,11 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use Test::More;
-use File::Spec::Functions qw(catfile splitdir);
+use Cwd 'abs_path';
+use File::Basename 'dirname';
+use File::Spec::Functions 'catfile';
 use File::Temp 'tempdir';
+use Mojo::ByteStream 'b';
 use Mojo::DeprecationTest;
 
 use Mojo::Util
@@ -14,7 +17,7 @@ use Mojo::Util
   qw(monkey_patch punycode_decode punycode_encode quote secure_compare),
   qw(secure_compare sha1_bytes sha1_sum slurp split_header spurt squish),
   qw(steady_time tablify trim unindent unquote url_escape url_unescape),
-  qw(xml_escape xor_encode);
+  qw(xml_escape xor_encode xss_escape);
 
 # camelize
 is camelize('foo_bar_baz'), 'FooBarBaz', 'right camelized result';
@@ -192,6 +195,10 @@ is xml_escape('привет'), 'привет', 'right XML escaped result';
 # xml_escape (UTF-8)
 is xml_escape('привет<foo>'), 'привет&lt;foo&gt;',
   'right XML escaped result';
+
+# xss_escape
+is xss_escape('<p>'), '&lt;p&gt;', 'right XSS escaped result';
+is xss_escape(b('<p>')), '<p>', 'right XSS escaped result';
 
 # punycode_encode
 is punycode_encode('bücher'), 'bcher-kva', 'right punycode encoded result';
@@ -371,7 +378,7 @@ is xor_encode('hello', '123456789'), "\x59\x57\x5f\x58\x5a", 'right result';
 is xor_encode("\x59\x57\x5f\x58\x5a", '123456789'), 'hello', 'right result';
 
 # slurp
-is slurp(catfile(splitdir($FindBin::Bin), qw(templates exception.mt))),
+is slurp(abs_path catfile(dirname(__FILE__), 'templates', 'exception.mt')),
   "test\n% die;\n123\n", 'right content';
 
 # spurt
@@ -381,7 +388,7 @@ spurt "just\nworks!", $file;
 is slurp($file), "just\nworks!", 'successful roundtrip';
 
 # steady_time
-like steady_time, qr/^\d+\.\d+$/, 'high resolution time';
+like steady_time, qr/^[\d.]+$/, 'high resolution time';
 
 # monkey_patch
 {
@@ -410,7 +417,7 @@ is MojoMonkeyTest::yang(), 'yang', 'right result';
 
 # monkey_patch (with name)
 SKIP: {
-  skip 'Sub::Util required!', 2 unless eval 'use Sub::Util; 1';
+  skip 'Sub::Util required!', 2 unless eval { require Sub::Util; 1 };
   is Sub::Util::subname(MojoMonkeyTest->can('foo')), 'MojoMonkeyTest::foo',
     'right name';
   is Sub::Util::subname(MojoMonkeyTest->can('bar')), 'MojoMonkeyTest::bar',

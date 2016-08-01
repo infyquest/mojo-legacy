@@ -368,14 +368,16 @@ is $res->headers->content_length, undef, 'right "Content-Length" value';
   $res->parse("HTTP/1.1 200 OK\x0d\x0a");
   $res->parse("Content-Type: text/plain\x0d\x0a");
   $res->parse("Transfer-Encoding: chunked\x0d\x0a\x0d\x0a");
+  ok !$res->is_limit_exceeded, 'limit is not exceeded';
   $res->parse('a' x 1000);
   ok $res->is_finished, 'response is finished';
   ok $res->content->is_finished, 'content is finished';
   is $res->error->{message}, 'Maximum buffer size exceeded', 'right error';
   is $res->error->{advice}, 400, 'right advice';
-  is $res->code,    200,   'right status';
-  is $res->message, 'OK',  'right message';
-  is $res->version, '1.1', 'right version';
+  ok $res->is_limit_exceeded, 'limit is not exceeded';
+  is $res->code,              200, 'right status';
+  is $res->message,           'OK', 'right message';
+  is $res->version,           '1.1', 'right version';
   is $res->headers->content_type, 'text/plain', 'right "Content-Type" value';
 }
 
@@ -771,7 +773,7 @@ is $res->code,        200, 'right status';
 is $res->message,     'OK', 'right message';
 is $res->version,     '1.1', 'right version';
 is $res->headers->date, 'Sun, 17 Aug 2008 16:27:35 GMT', 'right "Date" value';
-is $res->headers->content_length, '108', 'right "Content-Length" value';
+is $res->headers->content_length, '110', 'right "Content-Length" value';
 is $res->headers->content_type, 'multipart/mixed; boundary=7am1X',
   'right "Content-Type" value';
 is $res->content->parts->[0]->asset->slurp, 'Hallo Welt lalalalalala!',
@@ -1038,18 +1040,18 @@ is $res->version,     '1.1', 'right version';
 is $res->dom->at('p')->text,     'foo', 'right value';
 is $res->dom->at('p > a')->text, 'bar', 'right value';
 is $res->dom('p')->first->text, 'foo', 'right value';
-is_deeply [$res->dom('p > a')->map('text')->each], [qw(bar baz)],
+is_deeply $res->dom('p > a')->map('text')->to_array, [qw(bar baz)],
   'right values';
 my @text = $res->dom('a')->map(content => 'yada')->first->root->find('p > a')
   ->map('text')->each;
 is_deeply \@text, [qw(yada yada)], 'right values';
-is_deeply [$res->dom('p > a')->map('text')->each], [qw(yada yada)],
+is_deeply $res->dom('p > a')->map('text')->to_array, [qw(yada yada)],
   'right values';
 @text
   = $res->dom->find('a')->map(content => 'test')->first->root->find('p > a')
   ->map('text')->each;
 is_deeply \@text, [qw(test test)], 'right values';
-is_deeply [$res->dom->find('p > a')->map('text')->each], [qw(test test)],
+is_deeply $res->dom->find('p > a')->map('text')->to_array, [qw(test test)],
   'right values';
 
 # Build DOM from response with charset

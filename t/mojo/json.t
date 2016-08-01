@@ -146,7 +146,7 @@ is b($bytes)->decode('UTF-8'), "[\"hello\\u0003\x{0152}world\x{0152}!\"]",
 $bytes = encode_json ["123abc"];
 is $bytes, '["123abc"]', 'encode ["123abc"]';
 $bytes = encode_json ["\x00\x1f \a\b/\f\r"];
-is $bytes, '["\\u0000\\u001F \\u0007\\b/\f\r"]',
+is $bytes, '["\\u0000\\u001F \\u0007\\b\/\f\r"]',
   'encode ["\x00\x1f \a\b/\f\r"]';
 $bytes = encode_json '';
 is $bytes, '""', 'encode ""';
@@ -247,11 +247,11 @@ SKIP: {
     is_deeply decode_json($bytes), ['a' x 32768], 'successful roundtrip';
 }
 
-# u2028 and u2029
-$bytes = encode_json ["\x{2028}test\x{2029}123"];
-is index($bytes, b("\x{2028}")->encode), -1, 'properly escaped';
-is index($bytes, b("\x{2029}")->encode), -1, 'properly escaped';
-is_deeply decode_json($bytes), ["\x{2028}test\x{2029}123"],
+# u2028, u2029 and slash
+$bytes = encode_json ["\x{2028}test\x{2029}123</script>"];
+is $bytes, '["\u2028test\u2029123<\/script>"]',
+  'escaped u2028, u2029 and slash';
+is_deeply decode_json($bytes), ["\x{2028}test\x{2029}123</script>"],
   'successful roundtrip';
 
 # JSON without UTF-8 encoding
@@ -284,9 +284,13 @@ is encode_json({false => \!!$bytes}), '{"false":false}',
 is encode_json({false => \$bytes}), '{"false":false}',
   'encode false boolean from reference';
 
-# Stringify booleans
-is(Mojo::JSON->true,  1, 'right value');
-is(Mojo::JSON->false, 0, 'right value');
+# Booleans in different contexts
+ok true, 'true';
+is true, 1, 'right string value';
+is true + 0, 1, 'right numeric value';
+ok !false, 'false';
+is false, 0, 'right string value';
+is false + 0, 0, 'right numeric value';
 
 # Upgraded numbers
 my $num = 3;

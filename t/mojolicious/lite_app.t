@@ -527,7 +527,7 @@ $t->get_ok('/alternatives/☃')->status_is(200)
   ->header_is(Server => 'Mojolicious (Perl)')
   ->content_is('/alternatives/%E2%98%83');
 
-# Different unicode alternative
+# Different Unicode alternative
 $t->get_ok('/alternatives/♥')->status_is(200)
   ->header_is(Server => 'Mojolicious (Perl)')
   ->content_is('/alternatives/%E2%99%A5');
@@ -689,7 +689,7 @@ $t->get_ok('/regex/in/template')->status_is(200)
 my $url = $t->ua->server->url->userinfo('sri:foo')->path('/stream')
   ->query(foo => 'bar');
 $t->get_ok($url)->status_is(200)->header_is(Server => 'Mojolicious (Perl)')
-  ->content_like(qr!^foobarsri:foohttp://localhost:\d+/stream$!);
+  ->content_like(qr!^foobarsri:foohttp://127\.0\.0\.1:\d+/stream$!);
 
 # Not ajax
 $t->get_ok('/maybe/ajax')->status_is(200)
@@ -733,7 +733,7 @@ $t->get_ok('/.html')->status_is(200)
   $t->ua->server->restart;
   $t->get_ok('/0' => {'X-Forwarded-For' => '192.0.2.2, 192.0.2.1'})
     ->status_is(200)->header_unlike('X-Original' => qr/192\.0\.2\.1/)
-    ->content_like(qr!http://localhost:\d+/0-192\.0\.2\.1-0$!);
+    ->content_like(qr!http://127\.0\.0\.1:\d+/0-192\.0\.2\.1-0$!);
 }
 
 # Reverse proxy with "X-Forwarded-Proto"
@@ -741,19 +741,19 @@ $t->get_ok('/.html')->status_is(200)
   local $ENV{MOJO_REVERSE_PROXY} = 1;
   $t->ua->server->restart;
   $t->get_ok('/0' => {'X-Forwarded-Proto' => 'https'})->status_is(200)
-    ->content_like(qr!^https://localhost:\d+/0-!)->content_like(qr/-0$/)
+    ->content_like(qr!^https://127\.0\.0\.1:\d+/0-!)->content_like(qr/-0$/)
     ->content_unlike(qr!-192\.0\.2\.1-0$!);
 }
 
 # "X-Forwarded-For"
 $t->ua->server->restart;
 $t->get_ok('/0' => {'X-Forwarded-For' => '192.0.2.2, 192.0.2.1'})
-  ->status_is(200)->content_like(qr!^http://localhost:\d+/0-!)
+  ->status_is(200)->content_like(qr!^http://127\.0\.0\.1:\d+/0-!)
   ->content_like(qr/-0$/)->content_unlike(qr!-192\.0\.2\.1-0$!);
 
 # "X-Forwarded-Proto"
 $t->get_ok('/0' => {'X-Forwarded-Proto' => 'https'})->status_is(200)
-  ->content_like(qr!^http://localhost:\d+/0-!)->content_like(qr/-0$/)
+  ->content_like(qr!^http://127\.0\.0\.1:\d+/0-!)->content_like(qr/-0$/)
   ->content_unlike(qr!-192\.0\.2\.1-0$!);
 
 # Inline "epl" template
@@ -789,10 +789,10 @@ $t->app->log->unsubscribe(message => $cb);
 # With body and max message size
 {
   local $ENV{MOJO_MAX_MESSAGE_SIZE} = 1024;
-  $t->get_ok('/', '1234' x 1024)->status_is(413)
+  $t->get_ok('/', '1234' x 1024)->status_is(200)
     ->header_is(Connection => 'close')
     ->content_is(
-    "/root.html\n/root.html\n/root.html\n/root.html\n/root.html\n");
+    "413\n/root.html\n/root.html\n/root.html\n/root.html\n/root.html\n");
 }
 
 # Relaxed placeholder
@@ -1061,7 +1061,7 @@ http://mojolicio.us/test?foo=23&bar=24&baz=25
 /bar/23?bar=24&baz=25&foo=yada
 EOF
 $t->get_ok('/url_with/foo?foo=bar')->status_is(200)
-  ->content_like(qr!http://localhost:\d+/url_with/bar\?foo\=bar!);
+  ->content_like(qr!http://127\.0\.0\.1:\d+/url_with/bar\?foo\=bar!);
 
 # Dynamic inline template
 $t->get_ok('/dynamic/inline')->status_is(200)
@@ -1104,6 +1104,7 @@ Test ok!
 
 @@ root.html.epl
 % my $c = shift;
+<% if (my $err = $c->req->error) { =%><%= "$err->{advice}\n" %><% } =%>
 %== $c->url_for('root_path')
 %== $c->url_for('root_path')
 %== $c->url_for('root_path')

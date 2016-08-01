@@ -18,8 +18,8 @@ use constant TLS_WRITE => TLS ? IO::Socket::SSL::SSL_WANT_WRITE() : 0;
 
 # To regenerate the certificate run this command (18.04.2012)
 # openssl req -new -x509 -keyout server.key -out server.crt -nodes -days 7300
-my $CERT = catfile dirname(__FILE__), 'server.crt';
-my $KEY  = catfile dirname(__FILE__), 'server.key';
+my $CERT = catfile dirname(__FILE__), 'certs', 'server.crt';
+my $KEY  = catfile dirname(__FILE__), 'certs', 'server.key';
 
 has multi_accept => 50;
 has reactor => sub { Mojo::IOLoop->singleton->reactor };
@@ -99,6 +99,8 @@ sub listen {
     if $args->{tls_ca} && -T $args->{tls_ca};
   $tls->{SSL_cipher_list} = $args->{tls_ciphers} if $args->{tls_ciphers};
 }
+
+sub port { shift->{handle}->sockport }
 
 sub start {
   my $self = shift;
@@ -243,7 +245,7 @@ These options are currently available:
 
   address => '127.0.0.1'
 
-Local address to listen on, defaults to all.
+Local address to listen on, defaults to C<0.0.0.0>.
 
 =item backlog
 
@@ -301,6 +303,12 @@ Path to the TLS key file, defaults to a built-in test key.
 TLS verification mode, defaults to C<0x03>.
 
 =back
+
+=head2 port
+
+  my $port = $server->port;
+
+Get port this server is listening on.
 
 =head2 start
 

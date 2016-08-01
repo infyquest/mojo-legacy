@@ -133,7 +133,7 @@ sub param { shift->params->param(@_) }
 sub params {
   my $self = shift;
   return $self->{params}
-    ||= $self->body_params->clone->merge($self->query_params);
+    ||= $self->body_params->clone->append($self->query_params);
 }
 
 sub parse {
@@ -282,8 +282,8 @@ Mojo::Message::Request - HTTP request
 
 L<Mojo::Message::Request> is a container for HTTP requests based on
 L<RFC 7230|http://tools.ietf.org/html/rfc7230>,
-L<RFC 7231|http://tools.ietf.org/html/rfc7235>,
-L<RFC 7231|http://tools.ietf.org/html/rfc7235> and
+L<RFC 7231|http://tools.ietf.org/html/rfc7231>,
+L<RFC 7235|http://tools.ietf.org/html/rfc7235> and
 L<RFC 2817|http://tools.ietf.org/html/rfc2817>.
 
 =head1 EVENTS
@@ -426,8 +426,8 @@ Parts of the request body need to be loaded into memory to parse C<POST>
 parameters, so you have to make sure it is not excessively large, there's a
 10MB limit by default.
 
-  # Get parameter value
-  say $req->params->param('foo');
+  # Get parameter names and values
+  my $hash = $req->params->to_hash;
 
 =head2 parse
 

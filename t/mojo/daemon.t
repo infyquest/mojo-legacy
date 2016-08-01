@@ -13,6 +13,25 @@ use Mojo::Server::Daemon;
 use Mojo::UserAgent;
 use Mojolicious;
 
+package TestApp;
+use Mojo::Base 'Mojo';
+
+sub handler {
+  my ($self, $tx) = @_;
+  $tx->res->code(200);
+  $tx->res->body('Hello TestApp!');
+  $tx->resume;
+}
+
+package main;
+
+# Minimal application
+my $ua = Mojo::UserAgent->new;
+$ua->server->app(TestApp->new);
+my $tx = $ua->get('/');
+is $tx->res->code, 200, 'right status';
+is $tx->res->body, 'Hello TestApp!', 'right content';
+
 # Timeout
 {
   is(Mojo::Server::Daemon->new->inactivity_timeout, 15, 'right value');
@@ -26,9 +45,9 @@ use Mojolicious;
 {
   is_deeply(Mojo::Server::Daemon->new->listen,
     ['http://*:3000'], 'right value');
-  local $ENV{MOJO_LISTEN} = 'http://localhost:8080';
+  local $ENV{MOJO_LISTEN} = 'http://127.0.0.1:8080';
   is_deeply(Mojo::Server::Daemon->new->listen,
-    ['http://localhost:8080'], 'right value');
+    ['http://127.0.0.1:8080'], 'right value');
   $ENV{MOJO_LISTEN} = 'http://*:80,https://*:443';
   is_deeply(
     Mojo::Server::Daemon->new->listen,
@@ -82,7 +101,7 @@ isa_ok $app->build_tx, 'Mojo::Transaction::HTTP', 'right class';
 
 # Fresh application
 $app = Mojolicious->new;
-my $ua = Mojo::UserAgent->new(ioloop => Mojo::IOLoop->singleton);
+$ua = Mojo::UserAgent->new(ioloop => Mojo::IOLoop->singleton);
 is $ua->server->app($app)->app->moniker, 'mojolicious', 'right moniker';
 
 # Silence
@@ -121,7 +140,7 @@ $app->routes->post(
 $app->routes->any('/*whatever' => {text => 'Whatever!'});
 
 # Normal request
-my $tx = $ua->get('/normal/');
+$tx = $ua->get('/normal/');
 ok $tx->keep_alive, 'will be kept alive';
 is $tx->res->code, 200,         'right status';
 is $tx->res->body, 'Whatever!', 'right content';
@@ -188,16 +207,12 @@ my %params;
 for my $i (1 .. 10) { $params{"test$i"} = $i }
 my $result = '';
 for my $key (sort keys %params) { $result .= $params{$key} }
-my ($code, $body);
-my $port = $ua->server->url->port;
-$tx = $ua->post("http://127.0.0.1:$port/chunked" => form => \%params);
+$tx = $ua->post('/chunked' => form => \%params);
 is $tx->res->code, 200, 'right status';
 is $tx->res->body, $result, 'right content';
 
 # Upload
-($code, $body) = ();
-$tx = $ua->post(
-  "http://127.0.0.1:$port/upload" => form => {file => {content => $result}});
+$tx = $ua->post('/upload' => form => {file => {content => $result}});
 is $tx->res->code, 200, 'right status';
 is $tx->res->body, $result, 'right content';
 ok $tx->local_address, 'has local address';
@@ -214,7 +229,7 @@ ok $remote_port > 0, 'has remote port';
 my $daemon
   = Mojo::Server::Daemon->new(listen => ['http://127.0.0.1'], silent => 1);
 $daemon->start;
-$port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->handle->sockport;
+my $port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->port;
 is $daemon->app->moniker, 'HelloWorld', 'right moniker';
 my $buffer = '';
 my $id;
@@ -245,28 +260,15 @@ $daemon = Mojo::Server::Daemon->new(
   silent => 1
 );
 is scalar @{$daemon->acceptors}, 0, 'no active acceptors';
-$daemon->ioloop->max_connections(500);
-$daemon->start;
-is $daemon->ioloop->max_connections, 500, 'right number';
-is scalar @{$daemon->acceptors}, 1, 'one active acceptor';
-is $daemon->app->moniker, 'mojolicious', 'right moniker';
-$port = Mojo::IOLoop->acceptor($daemon->acceptors->[0])->handle->sockport;
-$tx = $ua->get("http://127.0.0.1:$port/throttle1" => {Connection => 'close'});
-ok $tx->success, 'successful';
-is $tx->res->code, 200,         'right status';
-is $tx->res->body, 'Whatever!', 'right content';
-$daemon->stop;
-is scalar @{$daemon->acceptors}, 0, 'no active acceptors';
-$tx = $ua->inactivity_timeout(0.5)
-  ->get("http://127.0.0.1:$port/throttle2" => {Connection => 'close'});
-ok !$tx->success, 'not successful';
-is $tx->error->{message}, 'Inactivity timeout', 'right error';
-$daemon->max_clients(600)->start;
-is $daemon->ioloop->max_connections, 600, 'right number';
-$tx = $ua->inactivity_timeout(10)
-  ->get("http://127.0.0.1:$port/throttle3" => {Connection => 'close'});
-ok $tx->success, 'successful';
-is $tx->res->code, 200,         'right status';
-is $tx->res->body, 'Whatever!', 'right content';
+is scalar @{$daemon->start->acceptors}, 1, 'one active acceptor';
+$id = $daemon->acceptors->[0];
+ok !!Mojo::IOLoop->acceptor($id), 'acceptor has been added';
+is scalar @{$daemon->stop->acceptors}, 0, 'no active acceptors';
+ok !Mojo::IOLoop->acceptor($id), 'acceptor has been removed';
+is scalar @{$daemon->start->acceptors}, 1, 'one active acceptor';
+$id = $daemon->acceptors->[0];
+ok !!Mojo::IOLoop->acceptor($id), 'acceptor has been added';
+undef $daemon;
+ok !Mojo::IOLoop->acceptor($id), 'acceptor has been removed';
 
 done_testing();

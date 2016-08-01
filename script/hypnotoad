@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!perl
 
 use strict;
 use warnings;
@@ -30,7 +30,7 @@ hypnotoad - Hypnotoad HTTP and WebSocket server
 
   Usage: hypnotoad [OPTIONS] [APPLICATION]
 
-    hypnotoad ./script/myapp
+    hypnotoad ./script/my_app
     hypnotoad ./myapp.pl
     hypnotoad -f ./myapp.pl
 

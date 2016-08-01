@@ -43,7 +43,7 @@ has types     => sub { Mojolicious::Types->new };
 has validator => sub { Mojolicious::Validator->new };
 
 our $CODENAME = 'Tiger Face';
-our $VERSION  = '5.59';
+our $VERSION  = '5.71';
 
 sub AUTOLOAD {
   my $self = shift;
@@ -89,13 +89,10 @@ sub defaults { Mojo::Util::_stash(defaults => @_) }
 sub dispatch {
   my ($self, $c) = @_;
 
-  # Prepare transaction
-  my $tx = $c->tx;
-  $tx->res->code(undef) if $tx->is_websocket;
-  $self->sessions->load($c);
   my $plugins = $self->plugins->emit_hook(before_dispatch => $c);
 
   # Try to find a static file
+  my $tx = $c->tx;
   $self->static->dispatch($c) and $plugins->emit_hook(after_static => $c)
     unless $tx->res->code;
 
@@ -111,11 +108,8 @@ sub dispatch {
 
   # Routes
   $plugins->emit_hook(before_routes => $c);
-  my $res = $tx->res;
-  return if $res->code;
-  if (my $code = (defined $tx->req->error ? $tx->req->error : {})->{advice}) { $res->code($code) }
-  elsif ($tx->is_websocket) { $res->code(426) }
-  $c->render_not_found unless $self->routes->dispatch($c) || $tx->res->code;
+  $c->render_not_found
+    unless $tx->res->code || $self->routes->dispatch($c) || $tx->res->code;
 }
 
 sub handler {
@@ -157,21 +151,18 @@ sub new {
   # Default to controller and application namespace
   my $r = $self->routes->namespaces(["@{[ref $self]}::Controller", ref $self]);
 
-  # Hide controller attributes/methods and "handler"
+  # Hide controller attributes/methods
   $r->hide(qw(app continue cookie every_cookie every_param));
-  $r->hide(qw(every_signed_cookie finish flash handler helpers match on));
-  $r->hide(qw(param redirect_to render render_exception render_later));
-  $r->hide(qw(render_maybe render_not_found render_to_string rendered req));
-  $r->hide(qw(res respond_to send session signed_cookie stash tx url_for));
-  $r->hide(qw(validation write write_chunk));
+  $r->hide(qw(every_signed_cookie finish flash helpers match on param));
+  $r->hide(qw(redirect_to render render_exception render_later render_maybe));
+  $r->hide(qw(render_not_found render_to_string rendered req res respond_to));
+  $r->hide(qw(send session signed_cookie stash tx url_for validation write));
+  $r->hide(qw(write_chunk));
 
-  # DEPRECATED in Tiger Face!
-  $r->hide('render_static');
-
-  # Check if we have a log directory
+  # Check if we have a log directory that is writable
   my $mode = $self->mode;
   $self->log->path($home->rel_file("log/$mode.log"))
-    if -w $home->rel_file('log');
+    if -d $home->rel_file('log') && -w _;
 
   $self->plugin($_)
     for qw(HeaderCondition DefaultHelpers TagHelpers EPLRenderer EPRenderer);
@@ -257,7 +248,8 @@ parsed.
 
 This is a very powerful hook and should not be used lightly, it makes some
 rather advanced features such as upload progress bars possible. Note that this
-hook will not work for embedded applications. (Passed the transaction and
+hook will not work for embedded applications, because only the host
+application gets to build transactions. (Passed the transaction and
 application object)
 
 =head2 before_dispatch
@@ -530,6 +522,12 @@ L<Mojolicious::Types> object.
 
 Validate parameters, defaults to a L<Mojolicious::Validator> object.
 
+  # Add validation check
+  $app->validator->add_check(foo => sub {
+    my ($validation, $name, $value) = @_;
+    return $value ne 'foo';
+  });
+
 =head1 METHODS
 
 L<Mojolicious> inherits all methods from L<Mojo> and implements the following
@@ -687,7 +685,7 @@ that have been bundled for internal use.
 
 =head2 Mojolicious Artwork
 
-  Copyright (C) 2010-2014, Sebastian Riedel.
+  Copyright (C) 2010-2015, Sebastian Riedel.
 
 Licensed under the CC-SA License, Version 4.0
 L<http://creativecommons.org/licenses/by-sa/4.0>.
@@ -949,6 +947,8 @@ Peter Edwards
 
 Pierre-Yves Ritschard
 
+Piotr Roszatycki
+
 Quentin Carbonneaux
 
 Rafal Pocztarski
@@ -1017,7 +1017,7 @@ Zak B. Elep
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2008-2014, Sebastian Riedel.
+Copyright (C) 2008-2015, Sebastian Riedel.
 
 This program is free software, you can redistribute it and/or modify it under
 the terms of the Artistic License version 2.0.

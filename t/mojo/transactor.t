@@ -1,8 +1,6 @@
 use Mojo::Base -strict;
 
 use Test::More;
-use File::Spec::Functions 'catdir';
-use FindBin;
 use Mojo::Asset::File;
 use Mojo::Asset::Memory;
 use Mojo::Transaction::WebSocket;
@@ -134,8 +132,7 @@ is $tx->req->body, 'a=1&a=2&a=3&b=4', 'right content';
 
 # Existing query string (lowercase HEAD)
 $tx = $t->tx(head => 'http://example.com?foo=bar' => form => {baz => [1, 2]});
-is $tx->req->url->to_abs, 'http://example.com?foo=bar&baz=1&baz=2',
-  'right URL';
+is $tx->req->url->to_abs, 'http://example.com?baz=1&baz=2', 'right URL';
 is $tx->req->method, 'head', 'right method';
 is $tx->req->headers->content_type, undef, 'no "Content-Type" value';
 ok $tx->is_empty, 'transaction is empty';
@@ -203,9 +200,8 @@ is_deeply $tx->req->every_param('a'), [1, 2, 3], 'right values';
 is_deeply [$tx->req->param('b')], [4], 'right values';
 
 # Multipart form with real file and custom header
-my $path = catdir $FindBin::Bin, 'transactor.t';
 $tx = $t->tx(POST => 'http://example.com/foo' => form =>
-    {mytext => {file => $path, DNT => 1}});
+    {mytext => {file => __FILE__, DNT => 1}});
 is $tx->req->url->to_abs, 'http://example.com/foo', 'right URL';
 is $tx->req->method, 'POST', 'right method';
 is $tx->req->headers->content_type, 'multipart/form-data',
@@ -224,7 +220,7 @@ is $tx->req->content->parts->[1], undef, 'no more parts';
 $tx
   = $t->tx(POST => 'http://example.com/foo' =>
     {'Content-Type' => 'multipart/mojo-form'} => form =>
-    {mytext => {file => Mojo::Asset::File->new(path => $path)}});
+    {mytext => {file => Mojo::Asset::File->new(path => __FILE__)}});
 is $tx->req->url->to_abs, 'http://example.com/foo', 'right URL';
 is $tx->req->method, 'POST', 'right method';
 is $tx->req->headers->content_type, 'multipart/mojo-form',
@@ -454,6 +450,7 @@ ok $tx->req->headers->sec_websocket_version,
 is $tx->req->headers->upgrade, 'websocket', 'right "Upgrade" value';
 is $t->upgrade($tx), undef, 'not upgraded';
 Mojo::Transaction::WebSocket->new(handshake => $tx)->server_handshake;
+$tx->res->code(101);
 $tx = $t->upgrade($tx);
 ok $tx->is_websocket, 'is a WebSocket';
 
