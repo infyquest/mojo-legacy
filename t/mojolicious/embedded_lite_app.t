@@ -372,7 +372,7 @@ $t->get_ok('/' => {Host => 'mojoliciousxorg'})->status_is(404);
 $t->get_ok('/' => {Host => 'www.kraihxcom'})->status_is(404);
 
 # Embedded WebSocket
-$t->websocket_ok('/x/â¥/url_for')->send_ok('ws_test')
+$t->websocket_ok('/x/♥/url_for')->send_ok('ws_test')
   ->message_ok->message_like(qr!^ws://127\.0\.0\.1:\d+/x/%E2%99%A5/url_for$!)
   ->send_ok('index')
   ->message_ok->message_like(qr!^http://127\.0\.0\.1:\d+/x/%E2%99%A5$!)
